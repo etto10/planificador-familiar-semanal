@@ -73,4 +73,284 @@ with tab1:
                     str_urgentes = ", ".join(st.session_state.despensa_urgentes) if st.session_state.despensa_urgentes else "Ninguno"
                     str_fondo = ", ".join(st.session_state.despensa_fondo)
                     str_basicos = ", ".join(st.session_state.despensa_basicos)
+
+                    prompt = f"""
+                    Eres un chef nutricionista personal experto en dieta mediterránea saludable para una familia de 4 (Héctor, Ainhoa y los niños Beñat de 8 años y Araia de 3).
+                    Genera un menú de Lunes a Viernes (Comida y Cena) en formato JSON.
+
+                    LOGÍSTICA DE TÚPERES Y CASA:
+                    - Turno Ainhoa: {turno_ainhoa}.
+                    - Héctor: Túper Comida L-J. Viernes come en casa. Cena en casa siempre.
+                    - Cenas: Niños Beñat (8) y Araia (3) cenan en casa siempre.
+
+                    REGLAS DE ORO OBLIGATORIAS:
+                    1. ALIMENTACIÓN SALUDABLE: Todos los platos deben ser nutricionalmente equilibrados, basados en alimentos reales, abundantes verduras, legumbres y proteínas magras.
+                    2. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
+                    3. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
+                    4. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza, salmón, lubina, calamares).
+                    5. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
+                    6. INGREDIENTES A EXCLUIR DE LA LISTA DE COMPRA: El usuario YA TIENE estos ingredientes en casa (Fondo: {str_fondo} | Básicos: {str_basicos}). NUNCA pidas comprar ninguno de estos elementos en la lista de ingredientes adicionales ("ingredientes_compra").
+                    7. Para CADA plato incluye una descripción detallada ("descripcion") con los pasos clave de elaboración en 2-3 frases cortas.
+                    8. Incluye también una lista simple de ingredientes que HABRÍA QUE COMPRAR para ese plato ("ingredientes_compra") sin contar lo que ya hay en la despensa/básicos.
+
+                    RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
+                    {{
+                        "Lunes": {{
+                            "Comida_Plato": "...", "Comida_Desc": "...", "Comida_Compra": ["ingrediente1", "ingrediente2"],
+                            "Cena_Plato": "...", "Cena_Desc": "...", "Cena_Compra": ["ingrediente1"]
+                        }},
+                        "Martes": {{ ... }},
+                        "Miércoles": {{ ... }},
+                        "Jueves": {{ ... }},
+                        "Viernes": {{ ... }}
+                    }}
+                    """
+
+                    model = genai.GenerativeModel("gemini-3.8-flash")
+                    response = model.generate_content(prompt)
+                    text_response = response.text.replace("```json", "").replace("```", "").strip()
+                    menu_ia = json.loads(text_response)
+
+                    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+                    menu_final = {}
+
+                    for dia in dias:
+                        hector_c = "🍱 Túper Héctor" if dia != "Viernes" else "🍽️ Casa Héctor"
+                        
+                        if "Mañana" in turno_ainhoa:
+                            ainhoa_c = "🍱 Túper Ainhoa"
+                            ainhoa_cen = "Casa Ainhoa"
+                        elif "Tarde" in turno_ainhoa:
+                            ainhoa_c = "🍽️ Casa Ainhoa"
+                            ainhoa_cen = "🍱 Túper Ainhoa"
+                        else:
+                            ainhoa_c = "🍽️ Casa Ainhoa"
+                            ainhoa_cen = "Casa Ainhoa"
+
+                        # Agrupar etiqueta de cenas si cenan todos en casa
+                        if ainhoa_cen == "Casa Ainhoa":
+                            cena_log = "🍽️ Toda la familia en casa"
+                        else:
+                            cena_log = f"🍽️ Casa Héctor, Beñat y Araia | 🍱 Túper Ainhoa"
+
+                        menu_final[dia] = {
+                            "Comida_Plato": menu_ia[dia]["Comida_Plato"],
+                            "Comida_Desc": menu_ia[dia].get("Comida_Desc", ""),
+                            "Comida_Compra": menu_ia[dia].get("Comida_Compra", []),
+                            "Comida_Logistica": f"{hector_c}  |  {ainhoa_c}",
+                            "Cena_Plato": menu_ia[dia]["Cena_Plato"],
+                            "Cena_Desc": menu_ia[dia].get("Cena_Desc", ""),
+                            "Cena_Compra": menu_ia[dia].get("Cena_Compra", []),
+                            "Cena_Logistica": cena_log
+                        }
+
+                    st.session_state.menu_actual = menu_final
+                    st.success("¡Menú saludable generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
+
+                except Exception as e:
+                    st.error(f"Error al generar el menú: {e}")
+
+# --- TAB 2: VISTA PREVIA Y EDICIÓN ---
+with tab2:
+    st.header("🎨 Vista Previa y Ajustes del Menú")
+    if "menu_actual" in st.session_state:
+        dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+        
+        for dia in dias:
+            with st.container():
+                st.subheader(f"📅 {dia}")
+                col_comida, col_cena = st.columns(2)
+                
+                # --- COMIDA ---
+                with col_comida:
+                    st.caption(f"🌞 **COMIDA** — `{st.session_state.menu_actual[dia]['Comida_Logistica']}`")
+                    c_title, c_btn1, c_btn2 = st.columns([0.74, 0.13, 0.13])
                     
+                    with c_title:
+                        st.markdown(f"### {st.session_state.menu_actual[dia]['Comida_Plato']}")
+                        if st.session_state.menu_actual[dia]['Comida_Desc']:
+                            st.caption(f"💡 *{st.session_state.menu_actual[dia]['Comida_Desc']}*")
+                    
+                    with c_btn1:
+                        if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
+                            if api_key:
+                                with st.spinner("Buscando alternativa saludable..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de comida para {dia} con pasos clave en la descripción y sin pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                    model = genai.GenerativeModel("gemini-3.8-flash")
+                                    res = model.generate_content(prompt_alt)
+                                    alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
+                                    st.session_state.menu_actual[dia]['Comida_Plato'] = alt_json['plato']
+                                    st.session_state.menu_actual[dia]['Comida_Desc'] = alt_json['desc']
+                                    st.session_state.menu_actual[dia]['Comida_Compra'] = alt_json.get('compra', [])
+                                    st.rerun()
+
+                    with c_btn2:
+                        if st.button("⭐", key=f"btn_fav_c_{dia}", help="Guardar en el Recetario Favorito"):
+                            nueva_receta = {
+                                "plato": st.session_state.menu_actual[dia]['Comida_Plato'],
+                                "desc": st.session_state.menu_actual[dia]['Comida_Desc']
+                            }
+                            if nueva_receta not in st.session_state.recetas_favoritas:
+                                st.session_state.recetas_favoritas.append(nueva_receta)
+                                st.toast("⭐ ¡Plato guardado en tu Recetario Favorito!", icon="✅")
+                            else:
+                                st.toast("ℹ️ Este plato ya está en tu recetario.")
+
+                # --- CENA ---
+                with col_cena:
+                    st.caption(f"🌙 **CENA** — `{st.session_state.menu_actual[dia]['Cena_Logistica']}`")
+                    f_title, f_btn1, f_btn2 = st.columns([0.74, 0.13, 0.13])
+                    
+                    with f_title:
+                        st.markdown(f"### {st.session_state.menu_actual[dia]['Cena_Plato']}")
+                        if st.session_state.menu_actual[dia]['Cena_Desc']:
+                            st.caption(f"💡 *{st.session_state.menu_actual[dia]['Cena_Desc']}*")
+                    
+                    with f_btn1:
+                        if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
+                            if api_key:
+                                with st.spinner("Buscando alternativa saludable..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de cena para {dia} amigable para niños con pasos clave en la descripción. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                    model = genai.GenerativeModel("gemini-3.8-flash")
+                                    res = model.generate_content(prompt_alt)
+                                    alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
+                                    st.session_state.menu_actual[dia]['Cena_Plato'] = alt_json['plato']
+                                    st.session_state.menu_actual[dia]['Cena_Desc'] = alt_json['desc']
+                                    st.session_state.menu_actual[dia]['Cena_Compra'] = alt_json.get('compra', [])
+                                    st.rerun()
+
+                    with f_btn2:
+                        if st.button("⭐", key=f"btn_fav_f_{dia}", help="Guardar en el Recetario Favorito"):
+                            nueva_receta = {
+                                "plato": st.session_state.menu_actual[dia]['Cena_Plato'],
+                                "desc": st.session_state.menu_actual[dia]['Cena_Desc']
+                            }
+                            if nueva_receta not in st.session_state.recetas_favoritas:
+                                st.session_state.recetas_favoritas.append(nueva_receta)
+                                st.toast("⭐ ¡Plato guardado en tu Recetario Favorito!", icon="✅")
+                            else:
+                                st.toast("ℹ️ Este plato ya está en tu recetario.")
+
+                st.divider()
+
+        # Botones de exportación
+        col_exp1, col_exp2 = st.columns(2)
+        
+        with col_exp1:
+            with st.expander("📄 Exportar Resumen / Imprimir para Nevera"):
+                st.markdown("### 📋 Menú Semanal Familiar")
+                for dia in dias:
+                    st.write(f"**{dia}:**")
+                    st.write(f"• *Comida:* {st.session_state.menu_actual[dia]['Comida_Plato']}")
+                    st.write(f"• *Cena:* {st.session_state.menu_actual[dia]['Cena_Plato']}")
+                st.caption("💡 Para guardar en PDF: Usa la opción de Imprimir del navegador (`Ctrl+P` / `Cmd+P`) en el tablet o PC y elige 'Guardar como PDF'.")
+
+        with col_exp2:
+            with st.expander("📝 Lista de la Compra Filtrada (Para Google Keep)"):
+                # Recopilar todos los ingredientes
+                compra_total = set()
+                for dia in dias:
+                    for ing in st.session_state.menu_actual[dia].get('Comida_Compra', []):
+                        compra_total.add(ing.capitalize())
+                    for ing in st.session_state.menu_actual[dia].get('Cena_Compra', []):
+                        compra_total.add(ing.capitalize())
+
+                # Excluir todo lo que ya está en el Fondo de Despensa y Básicos
+                existentes_lower = [b.lower() for b in st.session_state.despensa_basicos + st.session_state.despensa_fondo]
+                compra_filtrada = [item for item in compra_total if item.lower() not in existentes_lower]
+
+                if compra_filtrada:
+                    texto_keep = "\n".join([f"☐ {item}" for item in compra_filtrada])
+                    st.text_area("Copia este texto y pégalo directamente en una nota de Google Keep:", value=texto_keep, height=180)
+                else:
+                    st.success("¡Tenéis todo lo necesario en casa! No hace falta comprar nada esta semana.")
+    else:
+        st.info("Primero genera un menú en la pestaña '🗓️ Planificar Semana'.")
+
+# --- TAB 3: RECETARIO FAVORITO ---
+with tab3:
+    st.header("⭐ Vuestro Recetario Familiar de Éxitos")
+    st.write("Platos que habéis guardado marcando la estrella durante las planificaciones semanales:")
+    
+    if st.session_state.recetas_favoritas:
+        for idx, rec in enumerate(st.session_state.recetas_favoritas):
+            col_rec, col_del = st.columns([0.9, 0.1])
+            with col_rec:
+                st.markdown(f"### {idx+1}. {rec['plato']}")
+                if rec['desc']:
+                    st.caption(f"💡 {rec['desc']}")
+            with col_del:
+                if st.button("🗑️", key=f"del_fav_{idx}", help="Eliminar plato"):
+                    st.session_state.recetas_favoritas.pop(idx)
+                    st.rerun()
+            st.divider()
+    else:
+        st.info("Aún no habéis guardado recetas favoritas. ¡Pulsa la estrella ⭐ en cualquier plato del menú para añadirlo!")
+
+# --- TAB 4: DESPENSA Y BÁSICOS (UNIFORME Y EDITABLE) ---
+with tab4:
+    st.header("📦 Gestor Visual de Despensa y Stock")
+    
+    col_u, col_f, col_b = st.columns(3)
+    
+    # BLOQUE 1: URGENTES
+    with col_u:
+        st.subheader("⚠️ 1. Urgentes")
+        st.caption("Consumir L/M:")
+        
+        with st.form("form_urg", clear_on_submit=True):
+            n_urg = st.text_input("Añadir urgente:", placeholder="Ej: Pechuga...", label_visibility="collapsed")
+            if st.form_submit_button("➕ Añadir"):
+                if n_urg and n_urg.strip() not in st.session_state.despensa_urgentes:
+                    st.session_state.despensa_urgentes.append(n_urg.strip())
+                    st.rerun()
+
+        if st.session_state.despensa_urgentes:
+            for idx, item in enumerate(st.session_state.despensa_urgentes):
+                c1, c2 = st.columns([0.8, 0.2])
+                c1.warning(item)
+                if c2.button("❌", key=f"d_urg_{idx}"):
+                    st.session_state.despensa_urgentes.pop(idx)
+                    st.rerun()
+        else:
+            st.info("Vacío.")
+
+    # BLOQUE 2: FONDO DE DESPENSA
+    with col_f:
+        st.subheader("🧅 2. Fondo")
+        st.caption("Uso libre:")
+        
+        with st.form("form_fon", clear_on_submit=True):
+            n_fon = st.text_input("Añadir fondo:", placeholder="Ej: Garbanzos...", label_visibility="collapsed")
+            if st.form_submit_button("➕ Añadir"):
+                if n_fon and n_fon.strip() not in st.session_state.despensa_fondo:
+                    st.session_state.despensa_fondo.append(n_fon.strip())
+                    st.rerun()
+
+        if st.session_state.despensa_fondo:
+            for idx, item in enumerate(st.session_state.despensa_fondo):
+                c1, c2 = st.columns([0.8, 0.2])
+                c1.info(item)
+                if c2.button("❌", key=f"d_fon_{idx}"):
+                    st.session_state.despensa_fondo.pop(idx)
+                    st.rerun()
+        else:
+            st.info("Vacío.")
+
+    # BLOQUE 3: BÁSICOS PERMANENTES
+    with col_b:
+        st.subheader("🧂 3. Básicos")
+        st.caption("No van a la compra:")
+        
+        with st.form("form_bas", clear_on_submit=True):
+            n_bas = st.text_input("Añadir básico:", placeholder="Ej: Comino...", label_visibility="collapsed")
+            if st.form_submit_button("➕ Añadir"):
+                if n_bas and n_bas.strip() not in st.session_state.despensa_basicos:
+                    st.session_state.despensa_basicos.append(n_bas.strip())
+                    st.rerun()
+
+        if st.session_state.despensa_basicos:
+            for idx, item in enumerate(st.session_state.despensa_basicos):
+                c1, c2 = st.columns([0.8, 0.2])
+                c1.success(item)
+     
