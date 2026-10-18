@@ -348,4 +348,19 @@ with tab4:
         st.subheader("🧅 2. Fondo")
         st.caption("Uso libre:")
         
-        with st.form("fo
+        with st.form("form_bas", clear_on_submit=True):
+            n_bas = st.text_input("Añadir básico:", placeholder="Ej: Comino...", label_visibility="collapsed")
+            if st.form_submit_button("➕ Añadir"):
+                if n_bas and n_bas.strip() not in st.session_state.despensa_basicos:
+                    st.session_state.despensa_basicos.append(n_bas.strip())
+                    st.rerun()
+
+        if st.session_state.despensa_basicos:
+            for idx, item in enumerate(st.session_state.despensa_basicos):
+                c1, c2 = st.columns([0.8, 0.2])
+                c1.success(item)
+                if c2.button("❌", key=f"d_bas_{idx}"):
+                    st.session_state.despensa_basicos.pop(idx)
+                    st.rerun()
+        else:
+            st.info("Vacío.")
