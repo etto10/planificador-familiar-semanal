@@ -6,7 +6,7 @@ import google.generativeai as genai
 st.set_page_config(page_title="Planificador Familiar de Menús", page_icon="🍳", layout="wide")
 
 st.title("🍳 Planificador Familiar de Menús con IA")
-st.caption("Héctor, Ainhoa, Beñat y Araia — Menús dinámicos, inteligentes y visuales")
+st.caption("Héctor, Ainhoa, Beñat y Araia — Menús dinámicos, saludables y visuales")
 
 # --- CONFIGURACIÓN DE API KEY ---
 with st.sidebar:
@@ -18,12 +18,26 @@ with st.sidebar:
     else:
         st.warning("Introduce tu API Key de Gemini para activar la generación inteligente.")
 
-# --- INICIALIZAR RECETARIO FAVORITO EN SESSION STATE ---
+# --- INICIALIZAR ESTADOS EN SESSION STATE ---
 if "recetas_favoritas" not in st.session_state:
     st.session_state.recetas_favoritas = [
-        {"plato": "Lentejas estofadas con verduras", "desc": "Guiso tradicional con zanahoria, patata y puerro. Ideal para túper."},
-        {"plato": "Tacos de pollo caseros con pico de gallo", "desc": "Cena divertida para niños con aguacate y pechuga picada a la plancha."},
+        {"plato": "Lentejas estofadas con verduras", "desc": "Guiso tradicional de legumbres con zanahoria, patata y puerro sin embutido. Muy saludable y rico en fibra."},
+        {"plato": "Tacos de pollo caseros con pico de gallo", "desc": "Cena divertida y saludable para niños con tiras de pechuga a la plancha, aguacate y tomate."},
     ]
+
+if "despensa_urgentes" not in st.session_state:
+    st.session_state.despensa_urgentes = ["Pechugas de pollo", "Medio calabacín"]
+
+if "despensa_fondo" not in st.session_state:
+    st.session_state.despensa_fondo = {
+        "Cebollas": True,
+        "Patatas": True,
+        "Huevos": True,
+        "Arroz": True,
+        "Latas de atún": True,
+        "Garbanzos en bote": True,
+        "Pasta / Ñoquis": True
+    }
 
 # --- PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Planificar Semana", "🎨 Vista previa y Edición", "⭐ Recetario Favorito", "📦 Despensa y Básicos"])
@@ -44,40 +58,43 @@ with tab1:
             options=["Familiar / Tradicional", "Equilibrado con Novedades", "Muy Variado / Creativo"]
         )
     with col3:
-        st.info("💡 Las reglas de túper (1 solo túper repetido), la despensa y los platos para niños se aplican automáticamente.")
+        st.info("💡 Las reglas de túper, cenas de pescado, despensa y nutrición 100% saludable se aplican automáticamente.")
 
-    st.subheader("2. Reglas logísticas familiares activas")
+    st.subheader("2. Reglas logísticas y nutricionales activas")
     st.markdown("""
+    * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas de calidad y técnicas de cocina ligeras (horno, plancha, vapor, guisos sin exceso de grasa).
     * 💼 **Héctor:** Túper L-J en comida | Casa los Viernes | Cena en casa todos los días.
-    * 👧👦 **Beñat y Araia:** Cenas adaptadas de Lunes a Viernes.
+    * 👧👦 **Beñat y Araia:** Cenas adaptadas, atractivas y saludables de Lunes a Viernes.
+    * 🐟 **Pescado:** Prohibido en túpers. **Mínimo 1 cena a la semana en casa debe ser de pescado o marisco**.
     * 🍱 **Batch Cooking:** De las 4 comidas de túper, **solo 1 receta se repite 2 días** (ej. Lunes y Miércoles). Los otros 2 días son recetas de túper distintas.
-    * 🚫 **Pescado:** Estrictamente prohibido en túpers. Solo en comidas/cenas en casa.
     """)
 
-    if st.button("🚀 Generar Menú Inteligente con IA", type="primary"):
+    if st.button("🚀 Generar Menú Inteligente y Saludable con IA", type="primary"):
         if not api_key:
             st.error("Por favor, introduce una API Key válida en el menú lateral.")
         else:
-            with st.spinner("La IA está preparando vuestro menú semanal..."):
+            with st.spinner("La IA está preparando vuestro menú semanal saludable..."):
                 try:
-                    urgentes = st.session_state.get("p_urgentes", "Ninguno")
-                    fondo = st.session_state.get("p_fondo", "Cebollas, patatas, arroz, huevos, latas")
+                    str_urgentes = ", ".join(st.session_state.despensa_urgentes) if st.session_state.despensa_urgentes else "Ninguno"
+                    str_fondo = ", ".join([k for k, v in st.session_state.despensa_fondo.items() if v])
 
                     prompt = f"""
-                    Eres un chef nutricionista personal para una familia de 4 (Héctor, Ainhoa y los niños Beñat de 8 años y Araia de 3).
+                    Eres un chef nutricionista personal experto en dieta mediterránea saludable para una familia de 4 (Héctor, Ainhoa y los niños Beñat de 8 años y Araia de 3).
                     Genera un menú de Lunes a Viernes (Comida y Cena) en formato JSON.
 
                     LOGÍSTICA:
                     - Turno Ainhoa: {turno_ainhoa}.
                     - Héctor: Túper Comida L-J. Viernes come en casa. Cena en casa siempre.
-                    - Cenas: Niños Beñat (8) y Araia (3) cenan en casa. Cenas atractivas, variadas y ligeras.
+                    - Cenas: Niños Beñat (8) y Araia (3) cenan en casa. Cenas atractivas, saludables, ligeras y nutritivas.
 
-                    REGLAS DE ORO:
-                    1. TÚPERS (L-J): Selecciona 3 recetas de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
-                    2. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
-                    3. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {urgentes}.
-                    4. Puedes usar estos ingredientes de fondo de despensa en cualquier momento: {fondo}.
-                    5. Incluye para CADA plato una descripción breve ("descripcion") de 1 frase aclaratoria o paso a paso corto.
+                    REGLAS DE ORO OBLIGATORIAS:
+                    1. ALIMENTACIÓN SALUDABLE: Todos los platos deben ser nutricionalmente equilibrados, basados en alimentos reales, abundantes verduras, legumbres y proteínas magras. Evitar Ultraprocesados o grasas excesivas.
+                    2. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
+                    3. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
+                    4. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza, salmón, lubina, calamares al horno o plancha).
+                    5. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
+                    6. Puedes usar estos ingredientes de fondo de despensa en cualquier momento: {str_fondo}.
+                    7. Incluye para CADA plato una descripción breve ("descripcion") de 1 frase aclaratoria o valor nutricional/paso a paso corto.
 
                     RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
                     {{
@@ -125,7 +142,7 @@ with tab1:
                         }
 
                     st.session_state.menu_actual = menu_final
-                    st.success("¡Menú generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
+                    st.success("¡Menú saludable generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
 
                 except Exception as e:
                     st.error(f"Error al generar el menú: {e}")
@@ -154,8 +171,8 @@ with tab2:
                     with c_btn1:
                         if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
                             if api_key:
-                                with st.spinner("Buscando alternativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo de comida para {dia} que respete no llevar pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
+                                with st.spinner("Buscando alternativa saludable..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de comida para {dia} que respete no llevar pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -188,8 +205,8 @@ with tab2:
                     with f_btn1:
                         if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
                             if api_key:
-                                with st.spinner("Buscando alternativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo de cena para {dia} amigable para niños (Beñat y Araia). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
+                                with st.spinner("Buscando alternativa saludable..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de cena para {dia} amigable para niños (Beñat y Araia). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -197,7 +214,7 @@ with tab2:
                                     st.session_state.menu_actual[dia]['Cena_Desc'] = alt_json['desc']
                                     st.rerun()
 
-                    with f_btn2:
+                    with c_btn2:
                         if st.button("⭐", key=f"btn_fav_f_{dia}", help="Guardar en el Recetario Favorito"):
                             nueva_receta = {
                                 "plato": st.session_state.menu_actual[dia]['Cena_Plato'],
@@ -244,32 +261,53 @@ with tab3:
 
 # --- TAB 4: DESPENSA Y STOCK ---
 with tab4:
-    st.header("📦 Inventario de Despensa y Stock")
+    st.header("📦 Gestor Visual de Despensa y Stock")
     
-    col1, col2 = st.columns(2)
+    col_u, col_f = st.columns(2)
     
-    with col1:
-        st.subheader("⚠️ 1. Consumo URGENTE (Lunes/Martes)")
-        st.caption("Fresco o perecedero a consumir pronto.")
-        st.text_input(
-            "Ingredientes urgentes (separados por comas):",
-            placeholder="Ej: pechugas de pollo, medio calabacín",
-            key="p_urgentes"
-        )
+    # BLOQUE 1: URGENCIAS
+    with col_u:
+        st.subheader("⚠️ 1. Consumo URGENTE (Lunes / Martes)")
+        st.caption("Añade uno a uno los productos perecederos que caducan pronto:")
         
-        st.subheader("🧅 2. Fondo de Despensa (Uso libre)")
-        st.caption("Stock no perecedero. Usar cualquier día y descontar de la lista.")
-        st.text_area(
-            "Stock disponible (separados por comas):",
-            value="Cebollas, Patatas, Huevos, Arroz, Latas de atún, Garbanzos en bote",
-            key="p_fondo"
-        )
+        with st.form("form_urgentes", clear_on_submit=True):
+            nuevo_urg = st.text_input("Añadir producto urgente:", placeholder="Ej: Pescado fresco, medio calabacín...")
+            if st.form_submit_button("➕ Añadir a Urgentes"):
+                if nuevo_urg and nuevo_urg.strip() not in st.session_state.despensa_urgentes:
+                    st.session_state.despensa_urgentes.append(nuevo_urg.strip())
+                    st.rerun()
 
-    with col2:
-        st.subheader("🧂 3. Básicos Fijos (Nunca van a la lista)")
-        st.caption("Condimentos e ingredientes permanentes.")
-        st.text_area(
-            "Básicos permanentes:",
-            value="Aceite de oliva, Sal, Pimienta, Vinagre, Ajo, Harina, Pimentón, Orégano",
-            key="p_basicos"
-        )
+        if st.session_state.despensa_urgentes:
+            st.write("**Lista de urgentes para esta semana:**")
+            for idx, item in enumerate(st.session_state.despensa_urgentes):
+                c_item, c_btn = st.columns([0.85, 0.15])
+                c_item.warning(f"🔴 {item}")
+                if c_btn.button("❌", key=f"del_urg_{idx}"):
+                    st.session_state.despensa_urgentes.pop(idx)
+                    st.rerun()
+        else:
+            st.info("No hay productos urgentes marcados.")
+
+    # BLOQUE 2: FONDO DE DESPENSA
+    with col_f:
+        st.subheader("🧅 2. Fondo de Despensa (Uso Libre)")
+        st.caption("Marca lo que TIENES en stock para que la IA no lo pida en la compra:")
+        
+        for item in list(st.session_state.despensa_fondo.keys()):
+            st.session_state.despensa_fondo[item] = st.checkbox(
+                f"📦 {item}",
+                value=st.session_state.despensa_fondo[item],
+                key=f"chk_{item}"
+            )
+
+    st.divider()
+    
+    # BLOQUE 3: BÁSICOS
+    st.subheader("🧂 3. Básicos Permanentes (Filtro automático de compra)")
+    st.caption("Estos condimentos e ingredientes se asumen siempre en casa y jamás se meterán a la lista de la compra:")
+    
+    basicos_lista = ["Aceite de oliva", "Sal", "Pimienta", "Vinagre", "Ajo", "Harina", "Pimentón", "Orégano"]
+    cols_b = st.columns(4)
+    for idx, b in enumerate(basicos_lista):
+        cols_b[idx % 4].success(f"✅ {b}")
+                    
