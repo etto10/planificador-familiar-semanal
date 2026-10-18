@@ -71,7 +71,7 @@ with tab1:
     st.subheader("3. Reglas logísticas, nutricionales y preferencias activas")
     st.markdown("""
     * 🏋️‍♂️ **Perfil Físico & Raciones:** Adulto deportista (80 kg), adulta deportista (55 kg) y 2 niños pequeños (Beñat y Araia). Cantidades reales y equilibradas.
-    * 🧀 **Preferencia Quesa Ainhoa:** **Prohibidos quesos fuertes** (curado, azul, cabra). Solo queso suave (mozzarella, sándwich/havarti, queso fresco).
+    * 🧀 **Preferencia Queso Ainhoa:** **Prohibidos quesos fuertes** (curado, azul, cabra). Solo queso suave (mozzarella, sándwich/havarti, queso fresco).
     * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas magras y carbohidratos de calidad.
     * 💼 **Héctor:** Túper L-J en comida | Casa los Viernes | Cena en casa siempre.
     * 🐟 **Pescado:** Prohibido en túpers. **Mínimo 1 cena a la semana en casa debe ser de pescado o marisco**.
@@ -107,14 +107,14 @@ with tab1:
                     {str_notas}
 
                     REGLAS DE ORO OBLIGATORIAS:
-                    1. RACIONES Y CANTIDADES: Para CADA plato debes especificar el nombre completo del plato con sus ingredientes principales y CANTIDADES EXACTAS (gramos/unidades) para toda la familia (ej. "Pechugas de pollo al horno (500g) con patatas (400g) y brócoli (300g)").
+                    1. RACIONES Y CANTIDADES: Para CADA plato debes especificar el nombre completo del plato con sus ingredientes principales y CANTIDADES EXACTAS (gramos/unidades) ajustadas al perfil deportivo de la familia.
                     2. QUESOS: PROHIBIDO USAR QUESOS FUERTES (curados, azul, cabra). Únicamente se permite mozzarella suave, queso tipo sándwich o queso fresco.
                     3. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
                     4. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
                     5. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza 500g, salmón 450g, calamares 500g).
                     6. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
-                    7. EXCLUIR DE LA LISTA DE COMPRA EXTRA: El usuario YA TIENE estos ingredientes en casa (Fondo: {str_fondo} | Básicos: {str_basicos}). NUNCA los incluyas en la lista de la compra ("ingredientes_compra").
-                    8. LISTA DE LA COMPRA COMPLETA ("ingredientes_compra"): Incluye TODOS los ingredientes frescos o adicionales necesarios para la semana especificando cantidad (ej. "500g pechuga de pollo", "1kg zanahorias", "400g salmón fresco").
+                    7. EXCLUIR DE LA LISTA DE COMPRA EXTRA: El usuario YA TIENE estos ingredientes en casa (Fondo: {str_fondo} | Básicos: {str_basicos}). NUNCA los incluyas en la lista de la compra ("Comida_Compra" o "Cena_Compra").
+                    8. LISTA DE LA COMPRA COMPLETA ("Comida_Compra" / "Cena_Compra"): Incluye TODOS los ingredientes frescos o adicionales necesarios para el plato especificando cantidad exacta (ej. "500g pechuga de pollo", "1kg zanahorias", "400g salmón fresco").
                     9. DESCRIPCIÓN Y ELABORACIÓN: Para CADA plato incluye una descripción con los pasos clave de elaboración en 2-3 frases cortas.
 
                     RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
@@ -146,7 +146,7 @@ with tab1:
                             ainhoa_cen = "Casa Ainhoa"
                         elif "Tarde" in turno_ainhoa:
                             ainhoa_c = "🍽️ Casa Ainhoa"
-                            ainhoa_cen = "🍱 Túper Ainhoa"
+                            ainhoa_cen = "Túper Ainhoa"
                         else:
                             ainhoa_c = "🍽️ Casa Ainhoa"
                             ainhoa_cen = "Casa Ainhoa"
@@ -154,7 +154,7 @@ with tab1:
                         if ainhoa_cen == "Casa Ainhoa":
                             cena_log = "🍽️ Toda la familia en casa"
                         else:
-                            cena_log = f"🍽️ Casa Héctor, Beñat y Araia | 🍱 Túper Ainhoa"
+                            cena_log = "🍽️ Casa Héctor, Beñat y Araia | 🍱 Túper Ainhoa"
 
                         menu_final[dia] = {
                             "Comida_Plato": menu_ia[dia]["Comida_Plato"],
@@ -198,13 +198,13 @@ with tab2:
                         if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
                             if api_key:
                                 with st.spinner("Buscando alternativa cuantitativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas para {dia} (sin quesos fuertes ni pescado en túper). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas para la comida del {dia} (sin quesos fuertes ni pescado en túper). Responde en JSON corto: {{\n\"Comida_Plato\": \"...\", \"Comida_Desc\": \"...\", \"Comida_Compra\": [\"...\"]\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
-                                    st.session_state.menu_actual[dia]['Comida_Plato'] = alt_json['plato']
-                                    st.session_state.menu_actual[dia]['Comida_Desc'] = alt_json['desc']
-                                    st.session_state.menu_actual[dia]['Comida_Compra'] = alt_json.get('compra', [])
+                                    st.session_state.menu_actual[dia]['Comida_Plato'] = alt_json['Comida_Plato']
+                                    st.session_state.menu_actual[dia]['Comida_Desc'] = alt_json['Comida_Desc']
+                                    st.session_state.menu_actual[dia]['Comida_Compra'] = alt_json.get('Comida_Compra', [])
                                     st.rerun()
 
                     with c_btn2:
@@ -233,13 +233,13 @@ with tab2:
                         if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
                             if api_key:
                                 with st.spinner("Buscando alternativa cuantitativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas de cena para {dia} amigable para niños (sin quesos fuertes). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas de cena para {dia} amigable para niños (sin quesos fuertes). Responde en JSON corto: {{\n\"Cena_Plato\": \"...\", \"Cena_Desc\": \"...\", \"Cena_Compra\": [\"...\"]\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
-                                    st.session_state.menu_actual[dia]['Cena_Plato'] = alt_json['plato']
-                                    st.session_state.menu_actual[dia]['Cena_Desc'] = alt_json['desc']
-                                    st.session_state.menu_actual[dia]['Cena_Compra'] = alt_json.get('compra', [])
+                                    st.session_state.menu_actual[dia]['Cena_Plato'] = alt_json['Cena_Plato']
+                                    st.session_state.menu_actual[dia]['Cena_Desc'] = alt_json['Cena_Desc']
+                                    st.session_state.menu_actual[dia]['Cena_Compra'] = alt_json.get('Cena_Compra', [])
                                     st.rerun()
 
                     with f_btn2:
@@ -348,5 +348,4 @@ with tab4:
         st.subheader("🧅 2. Fondo")
         st.caption("Uso libre:")
         
-        with st.form("form_fon", clear_on_submit=True):
-            n_fon = st.text_input("
+        with st.form("fo
