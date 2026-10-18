@@ -92,7 +92,7 @@ with tab1:
                     }}
                     """
 
-                    model = genai.GenerativeModel("gemini-2.0-flash")
+                    model = genai.GenerativeModel("gemini-3.8-flash")
                     response = model.generate_content(prompt)
                     text_response = response.text.replace("```json", "").replace("```", "").strip()
                     menu_ia = json.loads(text_response)
@@ -156,7 +156,7 @@ with tab2:
                             if api_key:
                                 with st.spinner("Buscando alternativa..."):
                                     prompt_alt = f"Sugiere 1 plato alternativo de comida para {dia} que respete no llevar pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
-                                    model = genai.GenerativeModel("gemini-2.0-flash")
+                                    model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
                                     st.session_state.menu_actual[dia]['Comida_Plato'] = alt_json['plato']
@@ -190,7 +190,7 @@ with tab2:
                             if api_key:
                                 with st.spinner("Buscando alternativa..."):
                                     prompt_alt = f"Sugiere 1 plato alternativo de cena para {dia} amigable para niños (Beñat y Araia). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
-                                    model = genai.GenerativeModel("gemini-2.0-flash")
+                                    model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
                                     st.session_state.menu_actual[dia]['Cena_Plato'] = alt_json['plato']
