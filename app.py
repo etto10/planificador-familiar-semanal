@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import google.generativeai as genai
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Planificador Familiar de Menús", page_icon="🍳", layout="wide")
 
@@ -110,10 +111,10 @@ with tab1:
                     {str_notas}
 
                     REGLAS STRICTAS DE FORMATO Y CONTENIDO:
-                    1. "Comida_Plato" y "Cena_Plato": DEBE SER ÚNICAMENTE EL NOMBRE DEL PLATO LIMPIO (ej. "Lentejas estofadas con verduras", NO incluyas ni gramos ni marcas logísticas en este título).
+                    1. "Comida_Plato" y "Cena_Plato": DEBE SER ÚNICAMENTE EL NOMBRE DEL PLATO LIMPIO (ej. "Lentejas estofadas con verduras").
                     2. "Comida_Cantidades" / "Cena_Cantidades": Desglose claro de ingredientes y cantidades exactas para la familia (ej. "400g pechuga, 250g arroz, 300g brócoli").
                     3. QUESOS: PROHIBIDOS QUESOS FUERTES (curado, azul, cabra). Solo mozzarella suave, queso sándwich o queso fresco.
-                    4. TÚPERS (L-J): 3 recetas sin pescado. EXACTAMENTE 1 se repite 2 días.
+                    4. TÚPERS (L-J): 3 recetas sin pescado. EXACTAMENTE 1 se repite 2 días. VARIAR INGREDIENTES Y PLATOS.
                     5. PESCADO EN CASA: MÍNIMO 1 DÍA cena de pescado o marisco.
                     6. INGREDIENTES A COMPRAR ("Comida_Compra" / "Cena_Compra"): Lista limpia con cantidades de lo que NO hay en casa (Fondo: {str_fondo} | Básicos: {str_basicos}).
                     7. ELABORACIÓN ("Comida_Desc" / "Cena_Desc"): 2-3 frases cortas con los pasos clave de cocina.
@@ -121,13 +122,13 @@ with tab1:
                     RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
                     {{
                         "Lunes": {{
-                            "Comida_Plato": "Nombre del plato limpio", 
-                            "Comida_Cantidades": "400g pollo, 200g arroz...",
-                            "Comida_Desc": "Pasos de cocina...",
+                            "Comida_Plato": "Nombre limpio", 
+                            "Comida_Cantidades": "400g pollo...",
+                            "Comida_Desc": "Pasos...",
                             "Comida_Compra": ["400g pechuga de pollo"],
-                            "Cena_Plato": "Nombre del plato limpio",
+                            "Cena_Plato": "Nombre limpio",
                             "Cena_Cantidades": "300g merluza...",
-                            "Cena_Desc": "Pasos de cocina...",
+                            "Cena_Desc": "Pasos...",
                             "Cena_Compra": ["300g merluza fresca"]
                         }},
                         "Martes": {{ ... }},
@@ -204,8 +205,21 @@ with tab2:
                     with c_btn1:
                         if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
                             if api_key:
-                                with st.spinner("Buscando alternativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo para comida del {dia} (sin quesos fuertes ni pescado en túper). Responde en JSON corto: {{\n\"Comida_Plato\": \"...\", \"Comida_Cantidades\": \"...\", \"Comida_Desc\": \"...\", \"Comida_Compra\": [\"...\"]\n}}"
+                                with st.spinner("Buscando alternativa diferente..."):
+                                    # Recopilar platos de la semana para evitar repeticiones
+                                    platos_existentes = [st.session_state.menu_actual[d]['Comida_Plato'] for d in dias] + [st.session_state.menu_actual[d]['Cena_Plato'] for d in dias]
+                                    prompt_alt = f"""
+                                    Sugiere 1 plato alternativo DISTINTO para la comida del {dia}.
+                                    NO REPETIR ninguno de estos platos del menú actual: {', '.join(platos_existentes)}.
+                                    Reglas: Sin quesos fuertes ni pescado en túper.
+                                    Responde en JSON corto:
+                                    {{
+                                        "Comida_Plato": "Nombre limpio",
+                                        "Comida_Cantidades": "...",
+                                        "Comida_Desc": "Pasos...",
+                                        "Comida_Compra": ["ingrediente1..."]
+                                    }}
+                                    """
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -229,7 +243,6 @@ with tab2:
                             else:
                                 st.toast("ℹ️ Este plato ya está en tu recetario.")
 
-                    # Ficha técnica secundaria debajo del plato
                     if st.session_state.menu_actual[dia]['Comida_Cantidades']:
                         st.caption(f"👥 **Cantidades/Raciones:** {st.session_state.menu_actual[dia]['Comida_Cantidades']}")
                     if st.session_state.menu_actual[dia]['Comida_Desc']:
@@ -246,8 +259,20 @@ with tab2:
                     with f_btn1:
                         if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
                             if api_key:
-                                with st.spinner("Buscando alternativa..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo de cena para {dia} amigable para niños (sin quesos fuertes). Responde en JSON corto: {{\n\"Cena_Plato\": \"...\", \"Cena_Cantidades\": \"...\", \"Cena_Desc\": \"...\", \"Cena_Compra\": [\"...\"]\n}}"
+                                with st.spinner("Buscando alternativa diferente..."):
+                                    platos_existentes = [st.session_state.menu_actual[d]['Comida_Plato'] for d in dias] + [st.session_state.menu_actual[d]['Cena_Plato'] for d in dias]
+                                    prompt_alt = f"""
+                                    Sugiere 1 plato alternativo DISTINTO de cena para {dia} amigable para niños.
+                                    NO REPETIR ninguno de estos platos del menú actual: {', '.join(platos_existentes)}.
+                                    Reglas: Sin quesos fuertes.
+                                    Responde en JSON corto:
+                                    {{
+                                        "Cena_Plato": "Nombre limpio",
+                                        "Cena_Cantidades": "...",
+                                        "Cena_Desc": "Pasos...",
+                                        "Cena_Compra": ["ingrediente1..."]
+                                    }}
+                                    """
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -271,7 +296,6 @@ with tab2:
                             else:
                                 st.toast("ℹ️ Este plato ya está en tu recetario.")
 
-                    # Ficha técnica secundaria debajo del plato
                     if st.session_state.menu_actual[dia]['Cena_Cantidades']:
                         st.caption(f"👥 **Cantidades/Raciones:** {st.session_state.menu_actual[dia]['Cena_Cantidades']}")
                     if st.session_state.menu_actual[dia]['Cena_Desc']:
@@ -279,18 +303,17 @@ with tab2:
 
                 st.divider()
 
-        # BLOQUES DE EXPORTACIÓN Y COMPRA
+        # EXPORTACIÓN Y COMPRA
         col_exp1, col_exp2 = st.columns(2)
         
         with col_exp1:
             with st.expander("📄 Formato Tarjetas A4 Imprimible para Nevera", expanded=True):
                 st.markdown("## 📌 PLANIFICACIÓN SEMANAL FAMILIAR")
-                st.caption("Formato visual listo para imprimir en A4 y pegar en la nevera")
+                st.caption("Usa el botón de abajo o pulsa Ctrl+P / Opción Imprimir del navegador para PDF A4")
                 st.divider()
                 
                 for dia in dias:
                     st.markdown(f"### 📅 {dia.upper()}")
-                    
                     st.markdown(f"**🌞 COMIDA:** `{st.session_state.menu_actual[dia]['Comida_Plato']}`")
                     if st.session_state.menu_actual[dia]['Comida_Cantidades']:
                         st.markdown(f"* **Ingredientes/Cantidades:** {st.session_state.menu_actual[dia]['Comida_Cantidades']}")
@@ -303,11 +326,19 @@ with tab2:
                     if st.session_state.menu_actual[dia]['Cena_Desc']:
                         st.markdown(f"* **Elaboración:** {st.session_state.menu_actual[dia]['Cena_Desc']}")
                     st.divider()
-                    
-                st.caption("🖨️ **Impresión rápida:** Pulsa `Ctrl+P` (o la opción de imprimir de tu tablet) para guardarlo directamente como PDF o imprimirlo en papel A4.")
+                
+                # Botón Javascript para Imprimir/Generar PDF en 1 Clic
+                components.html(
+                    """
+                    <button onclick="window.parent.print()" style="background-color: #FF4B4B; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; width: 100%;">
+                        🖨️ Imprimir / Guardar como PDF (A4 Nevera)
+                    </button>
+                    """,
+                    height=60
+                )
 
         with col_exp2:
-            with st.expander("📝 Lista de la Compra Filtrada (Google Keep)", expanded=True):
+            with st.expander("📝 Lista de la Compra Completa (Google Keep)", expanded=True):
                 compra_total = set()
                 for dia in dias:
                     for ing in st.session_state.menu_actual[dia].get('Comida_Compra', []):
@@ -319,23 +350,33 @@ with tab2:
                 compra_filtrada = [item for item in compra_total if not any(ex in item.lower() for ex in existentes_lower)]
 
                 if compra_filtrada:
-                    texto_keep = "\n".join([f"☐ {item}" for item in sorted(compra_filtrada)])
-                    st.text_area("Lista de la compra lista para seleccionar/copiar a Google Keep:", value=texto_keep, height=300)
+                    texto_keep = "\\n".join([f"☐ {item}" for item in sorted(compra_filtrada)])
+                    st.text_area("Lista de la compra:", value=texto_keep.replace("\\n", "\n"), height=250, key="txt_keep_area")
+                    
+                    # Botón interactivo para copiar al portapapeles
+                    escaped_text = json.dumps(texto_keep.replace("\\n", "\n"))
+                    components.html(
+                        f"""
+                        <button id="copyBtn" onclick='navigator.clipboard.writeText({escaped_text}); document.getElementById("copyBtn").innerText="✅ ¡Lista Copiada al Portapapeles!";' style="background-color: #0E1117; color: white; border: 1px solid #4E5D6C; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; width: 100%;">
+                            📋 Copiar Lista de la Compra para Google Keep
+                        </button>
+                        """,
+                        height=55
+                    )
                 else:
                     st.success("¡Tenéis todo lo necesario en casa! No hace falta comprar nada esta semana.")
     else:
         st.info("Primero genera un menú en la pestaña '🗓️ Planificar Semana'.")
 
-# --- TAB 3: RECETARIO FAVORITO (CON OPCIÓN DE AÑADIR A MANO) ---
+# --- TAB 3: RECETARIO FAVORITO ---
 with tab3:
     st.header("⭐ Vuestro Recetario Familiar de Éxitos")
     
-    # Formulario para añadir platos manualmente a favoritos
     with st.expander("➕ Añadir una receta manual al recetario", expanded=False):
         with st.form("form_add_manual_fav", clear_on_submit=True):
             m_plato = st.text_input("Nombre del plato:", placeholder="Ej: Marmitako de bonito tradicional")
             m_cant = st.text_input("Cantidades / Ingredientes:", placeholder="Ej: 500g bonito, 1kg patatas, 2 pimientos choriceros")
-            m_desc = st.text_area("Pasos de elaboración:", placeholder="Ej: Sofreír cebolla y pimiento, chascado de patatas, añadir caldo y al final el bonito...")
+            m_desc = st.text_area("Pasos de elaboración:", placeholder="Ej: Sofreír cebolla y pimiento, chascado de patatas...")
             
             if st.form_submit_button("⭐ Guardar en Favoritos"):
                 if m_plato.strip():
@@ -346,7 +387,7 @@ with tab3:
                         "compra": ""
                     }
                     st.session_state.recetas_favoritas.append(nueva_m)
-                    st.success(f"¡'{m_plato}' guardado correctamente en vuestro recetario!")
+                    st.success(f"¡'{m_plato}' guardado en vuestro recetario!")
                     st.rerun()
 
     st.write("Platos guardados en vuestro catálogo familiar:")
@@ -367,9 +408,9 @@ with tab3:
                     st.rerun()
             st.divider()
     else:
-        st.info("Aún no habéis guardado recetas favoritas. ¡Podéis añadirlas a mano o desde el menú semanal!")
+        st.info("Aún no habéis guardado recetas favoritas.")
 
-# --- TAB 4: DESPENSA Y BÁSICOS (3 COLUMNAS SIMÉTRICAS) ---
+# --- TAB 4: DESPENSA Y BÁSICOS ---
 with tab4:
     st.header("📦 Gestor Visual de Despensa y Stock")
     
