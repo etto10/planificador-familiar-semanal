@@ -6,7 +6,7 @@ import google.generativeai as genai
 st.set_page_config(page_title="Planificador Familiar de Menús", page_icon="🍳", layout="wide")
 
 st.title("🍳 Planificador Familiar de Menús con IA")
-st.caption("Héctor, Ainhoa, Beñat y Araia — Menús dinámicos, saludables y visuales")
+st.caption("Héctor, Ainhoa, Beñat y Araia — Menús dinámicos, saludables y cuantitativos")
 
 # --- CONFIGURACIÓN DE API KEY ---
 with st.sidebar:
@@ -21,8 +21,14 @@ with st.sidebar:
 # --- INICIALIZAR ESTADOS EN SESSION STATE ---
 if "recetas_favoritas" not in st.session_state:
     st.session_state.recetas_favoritas = [
-        {"plato": "Lentejas estofadas con verduras", "desc": "Guiso tradicional de legumbres con zanahoria, patata y puerro. Pasos: sofreír verduras, añadir legumbres y caldo, y cocer a fuego lento 35 min."},
-        {"plato": "Tacos de pollo caseros con pico de gallo", "desc": "Cena divertida para niños. Pasos: dorar tiras de pechuga con especias, picar tomate y aguacate, y montar en tortillas."},
+        {
+            "plato": "Lentejas estofadas con verduras y arroz", 
+            "desc": "Guiso tradicional de legumbres. Pasos: Sofreír 1 cebolla y 2 zanahorias, añadir 280g de lentejas, 80g de arroz y 1l de caldo. Cocer 35 min."
+        },
+        {
+            "plato": "Tacos de pollo con mozzarella y aguacate", 
+            "desc": "Cena saludable para niños. Pasos: Dorar 400g de pechuga a tiras, fundir 80g de mozzarella suave y servir en tortillas integrales con 1 aguacate."
+        },
     ]
 
 if "despensa_urgentes" not in st.session_state:
@@ -53,51 +59,69 @@ with tab1:
             options=["Familiar / Tradicional", "Equilibrado con Novedades", "Muy Variado / Creativo"]
         )
     with col3:
-        st.info("💡 Las reglas de túper, cenas de pescado, despensa y nutrición 100% saludable se aplican automáticamente.")
+        st.info("💡 Cálculo exacto de cantidades para perfil deportista (Adulto 80kg, Adulta 55kg, 2 niños pequeños).")
 
-    st.subheader("2. Reglas logísticas y nutricionales activas")
+    st.subheader("2. Peticiones e instrucciones especiales para esta semana")
+    notas_especiales = st.text_area(
+        "Indica sobros de comida, eventos o detalles puntuales para esta semana:",
+        placeholder="Ej: Tengo un túper de brócoli cocido para el lunes; El miércoles necesitamos una cena ultra rápida...",
+        height=80
+    )
+
+    st.subheader("3. Reglas logísticas, nutricionales y preferencias activas")
     st.markdown("""
-    * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas magras y técnicas de cocina ligeras.
-    * 💼 **Héctor:** Túper L-J en comida | Casa los Viernes | Cena en casa todos los días.
-    * 👧👦 **Beñat y Araia:** Cenas adaptadas, atractivas y saludables de Lunes a Viernes.
+    * 🏋️‍♂️ **Perfil Físico & Raciones:** Adulto deportista (80 kg), adulta deportista (55 kg) y 2 niños pequeños (Beñat y Araia). Cantidades reales y equilibradas.
+    * 🧀 **Preferencia Quesa Ainhoa:** **Prohibidos quesos fuertes** (curado, azul, cabra). Solo queso suave (mozzarella, sándwich/havarti, queso fresco).
+    * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas magras y carbohidratos de calidad.
+    * 💼 **Héctor:** Túper L-J en comida | Casa los Viernes | Cena en casa siempre.
     * 🐟 **Pescado:** Prohibido en túpers. **Mínimo 1 cena a la semana en casa debe ser de pescado o marisco**.
-    * 🍱 **Batch Cooking:** De las 4 comidas de túper, **solo 1 receta se repite 2 días** (ej. Lunes y Miércoles). Los otros 2 días son recetas de túper distintas.
+    * 🍱 **Batch Cooking:** De las 4 comidas de túper, **solo 1 receta se repite 2 días** (ej. Lunes y Miércoles).
     """)
 
-    if st.button("🚀 Generar Menú Inteligente y Saludable con IA", type="primary"):
+    if st.button("🚀 Generar Menú Inteligente, Cuantitativo y Saludable", type="primary"):
         if not api_key:
             st.error("Por favor, introduce una API Key válida en el menú lateral o en los Secrets de Streamlit.")
         else:
-            with st.spinner("La IA está preparando vuestro menú semanal saludable..."):
+            with st.spinner("La IA está calculando vuestro menú con cantidades exactas..."):
                 try:
                     str_urgentes = ", ".join(st.session_state.despensa_urgentes) if st.session_state.despensa_urgentes else "Ninguno"
                     str_fondo = ", ".join(st.session_state.despensa_fondo)
                     str_basicos = ", ".join(st.session_state.despensa_basicos)
+                    str_notas = notas_especiales.strip() if notas_especiales else "Ninguna"
 
                     prompt = f"""
-                    Eres un chef nutricionista personal experto en dieta mediterránea saludable para una familia de 4 (Héctor, Ainhoa y los niños Beñat de 8 años y Araia de 3).
+                    Eres un chef nutricionista personal experto en dieta mediterránea deportiva para una familia de 4:
+                    - Héctor (Adulto deportista, 80 kg)
+                    - Ainhoa (Adulta deportista, 55 kg)
+                    - Beñat (Niño 8 años)
+                    - Araia (Niña 3 años)
+
                     Genera un menú de Lunes a Viernes (Comida y Cena) en formato JSON.
 
-                    LOGÍSTICA DE TÚPERES Y CASA:
+                    LOGÍSTICA:
                     - Turno Ainhoa: {turno_ainhoa}.
                     - Héctor: Túper Comida L-J. Viernes come en casa. Cena en casa siempre.
-                    - Cenas: Niños Beñat (8) y Araia (3) cenan en casa siempre.
+                    - Cenas: Niños Beñat y Araia cenan en casa siempre.
+
+                    PETICIONES / NOTAS ESPECIALES PARA ESTA SEMANA:
+                    {str_notas}
 
                     REGLAS DE ORO OBLIGATORIAS:
-                    1. ALIMENTACIÓN SALUDABLE: Todos los platos deben ser nutricionalmente equilibrados, basados en alimentos reales, abundantes verduras, legumbres y proteínas magras.
-                    2. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
-                    3. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
-                    4. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza, salmón, lubina, calamares).
-                    5. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
-                    6. INGREDIENTES A EXCLUIR DE LA LISTA DE COMPRA: El usuario YA TIENE estos ingredientes en casa (Fondo: {str_fondo} | Básicos: {str_basicos}). NUNCA pidas comprar ninguno de estos elementos en la lista de ingredientes adicionales ("ingredientes_compra").
-                    7. Para CADA plato incluye una descripción detallada ("descripcion") con los pasos clave de elaboración en 2-3 frases cortas.
-                    8. Incluye también una lista simple de ingredientes que HABRÍA QUE COMPRAR para ese plato ("ingredientes_compra") sin contar lo que ya hay en la despensa/básicos.
+                    1. RACIONES Y CANTIDADES: Para CADA plato debes especificar el nombre completo del plato con sus ingredientes principales y CANTIDADES EXACTAS (gramos/unidades) para toda la familia (ej. "Pechugas de pollo al horno (500g) con patatas (400g) y brócoli (300g)").
+                    2. QUESOS: PROHIBIDO USAR QUESOS FUERTES (curados, azul, cabra). Únicamente se permite mozzarella suave, queso tipo sándwich o queso fresco.
+                    3. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
+                    4. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
+                    5. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza 500g, salmón 450g, calamares 500g).
+                    6. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
+                    7. EXCLUIR DE LA LISTA DE COMPRA EXTRA: El usuario YA TIENE estos ingredientes en casa (Fondo: {str_fondo} | Básicos: {str_basicos}). NUNCA los incluyas en la lista de la compra ("ingredientes_compra").
+                    8. LISTA DE LA COMPRA COMPLETA ("ingredientes_compra"): Incluye TODOS los ingredientes frescos o adicionales necesarios para la semana especificando cantidad (ej. "500g pechuga de pollo", "1kg zanahorias", "400g salmón fresco").
+                    9. DESCRIPCIÓN Y ELABORACIÓN: Para CADA plato incluye una descripción con los pasos clave de elaboración en 2-3 frases cortas.
 
                     RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
                     {{
                         "Lunes": {{
-                            "Comida_Plato": "...", "Comida_Desc": "...", "Comida_Compra": ["ingrediente1", "ingrediente2"],
-                            "Cena_Plato": "...", "Cena_Desc": "...", "Cena_Compra": ["ingrediente1"]
+                            "Comida_Plato": "...", "Comida_Desc": "...", "Comida_Compra": ["500g pechuga de pollo", "1kg brócoli"],
+                            "Cena_Plato": "...", "Cena_Desc": "...", "Cena_Compra": ["1 paquete tortillas integrales"]
                         }},
                         "Martes": {{ ... }},
                         "Miércoles": {{ ... }},
@@ -127,7 +151,6 @@ with tab1:
                             ainhoa_c = "🍽️ Casa Ainhoa"
                             ainhoa_cen = "Casa Ainhoa"
 
-                        # Agrupar etiqueta de cenas si cenan todos en casa
                         if ainhoa_cen == "Casa Ainhoa":
                             cena_log = "🍽️ Toda la familia en casa"
                         else:
@@ -145,7 +168,7 @@ with tab1:
                         }
 
                     st.session_state.menu_actual = menu_final
-                    st.success("¡Menú saludable generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
+                    st.success("¡Menú cuantitativo generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
 
                 except Exception as e:
                     st.error(f"Error al generar el menú: {e}")
@@ -174,8 +197,8 @@ with tab2:
                     with c_btn1:
                         if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
                             if api_key:
-                                with st.spinner("Buscando alternativa saludable..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de comida para {dia} con pasos clave en la descripción y sin pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                with st.spinner("Buscando alternativa cuantitativa..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas para {dia} (sin quesos fuertes ni pescado en túper). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -209,8 +232,8 @@ with tab2:
                     with f_btn1:
                         if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
                             if api_key:
-                                with st.spinner("Buscando alternativa saludable..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de cena para {dia} amigable para niños con pasos clave en la descripción. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
+                                with st.spinner("Buscando alternativa cuantitativa..."):
+                                    prompt_alt = f"Sugiere 1 plato alternativo con cantidades exactas de cena para {dia} amigable para niños (sin quesos fuertes). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\", \"compra\": []\n}}"
                                     model = genai.GenerativeModel("gemini-3.8-flash")
                                     res = model.generate_content(prompt_alt)
                                     alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
@@ -233,35 +256,40 @@ with tab2:
 
                 st.divider()
 
-        # Botones de exportación
+        # Exportación mejorada
         col_exp1, col_exp2 = st.columns(2)
         
         with col_exp1:
-            with st.expander("📄 Exportar Resumen / Imprimir para Nevera"):
-                st.markdown("### 📋 Menú Semanal Familiar")
+            with st.expander("📄 Formato A4 Imprimible para la Nevera", expanded=True):
+                st.markdown("### 📌 MENÚ SEMANAL FAMILIAR (L-V)")
+                st.caption("Ajustado para Imprimir en Folio A4")
+                st.divider()
+                
                 for dia in dias:
-                    st.write(f"**{dia}:**")
-                    st.write(f"• *Comida:* {st.session_state.menu_actual[dia]['Comida_Plato']}")
-                    st.write(f"• *Cena:* {st.session_state.menu_actual[dia]['Cena_Plato']}")
-                st.caption("💡 Para guardar en PDF: Usa la opción de Imprimir del navegador (`Ctrl+P` / `Cmd+P`) en el tablet o PC y elige 'Guardar como PDF'.")
+                    st.markdown(f"#### 📅 {dia.upper()}")
+                    st.markdown(f"**🌞 Comida:** {st.session_state.menu_actual[dia]['Comida_Plato']}")
+                    st.markdown(f"*Elaboración:* {st.session_state.menu_actual[dia]['Comida_Desc']}")
+                    st.markdown(f"**🌙 Cena:** {st.session_state.menu_actual[dia]['Cena_Plato']}")
+                    st.markdown(f"*Elaboración:* {st.session_state.menu_actual[dia]['Cena_Desc']}")
+                    st.divider()
+                    
+                st.caption("🖨️ **Instrucciones para la nevera:** Pulsa `Ctrl+P` (o Imprimir en tu tablet) para guardar directamente este formato como PDF e imprimirlo en un folio A4.")
 
         with col_exp2:
-            with st.expander("📝 Lista de la Compra Filtrada (Para Google Keep)"):
-                # Recopilar todos los ingredientes
+            with st.expander("📝 Lista de la Compra Completa con Cantidades (Google Keep)", expanded=True):
                 compra_total = set()
                 for dia in dias:
                     for ing in st.session_state.menu_actual[dia].get('Comida_Compra', []):
-                        compra_total.add(ing.capitalize())
+                        compra_total.add(ing.strip())
                     for ing in st.session_state.menu_actual[dia].get('Cena_Compra', []):
-                        compra_total.add(ing.capitalize())
+                        compra_total.add(ing.strip())
 
-                # Excluir todo lo que ya está en el Fondo de Despensa y Básicos
                 existentes_lower = [b.lower() for b in st.session_state.despensa_basicos + st.session_state.despensa_fondo]
-                compra_filtrada = [item for item in compra_total if item.lower() not in existentes_lower]
+                compra_filtrada = [item for item in compra_total if not any(ex in item.lower() for ex in existentes_lower)]
 
                 if compra_filtrada:
-                    texto_keep = "\n".join([f"☐ {item}" for item in compra_filtrada])
-                    st.text_area("Copia este texto y pégalo directamente en una nota de Google Keep:", value=texto_keep, height=180)
+                    texto_keep = "\n".join([f"☐ {item}" for item in sorted(compra_filtrada)])
+                    st.text_area("Copia y pega en Google Keep:", value=texto_keep, height=350)
                 else:
                     st.success("¡Tenéis todo lo necesario en casa! No hace falta comprar nada esta semana.")
     else:
@@ -287,7 +315,7 @@ with tab3:
     else:
         st.info("Aún no habéis guardado recetas favoritas. ¡Pulsa la estrella ⭐ en cualquier plato del menú para añadirlo!")
 
-# --- TAB 4: DESPENSA Y BÁSICOS (UNIFORME Y EDITABLE) ---
+# --- TAB 4: DESPENSA Y BÁSICOS ---
 with tab4:
     st.header("📦 Gestor Visual de Despensa y Stock")
     
@@ -321,36 +349,4 @@ with tab4:
         st.caption("Uso libre:")
         
         with st.form("form_fon", clear_on_submit=True):
-            n_fon = st.text_input("Añadir fondo:", placeholder="Ej: Garbanzos...", label_visibility="collapsed")
-            if st.form_submit_button("➕ Añadir"):
-                if n_fon and n_fon.strip() not in st.session_state.despensa_fondo:
-                    st.session_state.despensa_fondo.append(n_fon.strip())
-                    st.rerun()
-
-        if st.session_state.despensa_fondo:
-            for idx, item in enumerate(st.session_state.despensa_fondo):
-                c1, c2 = st.columns([0.8, 0.2])
-                c1.info(item)
-                if c2.button("❌", key=f"d_fon_{idx}"):
-                    st.session_state.despensa_fondo.pop(idx)
-                    st.rerun()
-        else:
-            st.info("Vacío.")
-
-    # BLOQUE 3: BÁSICOS PERMANENTES
-    with col_b:
-        st.subheader("🧂 3. Básicos")
-        st.caption("No van a la compra:")
-        
-        with st.form("form_bas", clear_on_submit=True):
-            n_bas = st.text_input("Añadir básico:", placeholder="Ej: Comino...", label_visibility="collapsed")
-            if st.form_submit_button("➕ Añadir"):
-                if n_bas and n_bas.strip() not in st.session_state.despensa_basicos:
-                    st.session_state.despensa_basicos.append(n_bas.strip())
-                    st.rerun()
-
-        if st.session_state.despensa_basicos:
-            for idx, item in enumerate(st.session_state.despensa_basicos):
-                c1, c2 = st.columns([0.8, 0.2])
-                c1.success(item)
-     
+            n_fon = st.text_input("
