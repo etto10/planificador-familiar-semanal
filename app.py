@@ -21,23 +21,18 @@ with st.sidebar:
 # --- INICIALIZAR ESTADOS EN SESSION STATE ---
 if "recetas_favoritas" not in st.session_state:
     st.session_state.recetas_favoritas = [
-        {"plato": "Lentejas estofadas con verduras", "desc": "Guiso tradicional de legumbres con zanahoria, patata y puerro sin embutido. Muy saludable y rico en fibra."},
-        {"plato": "Tacos de pollo caseros con pico de gallo", "desc": "Cena divertida y saludable para niños con tiras de pechuga a la plancha, aguacate y tomate."},
+        {"plato": "Lentejas estofadas con verduras", "desc": "Guiso tradicional de legumbres con zanahoria, patata y puerro. Pasos: sofreír verduras, añadir legumbres y caldo, y cocer a fuego lento 35 min."},
+        {"plato": "Tacos de pollo caseros con pico de gallo", "desc": "Cena divertida para niños. Pasos: dorar tiras de pechuga con especias, picar tomate y aguacate, y montar en tortillas."},
     ]
 
 if "despensa_urgentes" not in st.session_state:
     st.session_state.despensa_urgentes = ["Pechugas de pollo", "Medio calabacín"]
 
 if "despensa_fondo" not in st.session_state:
-    st.session_state.despensa_fondo = {
-        "Cebollas": True,
-        "Patatas": True,
-        "Huevos": True,
-        "Arroz": True,
-        "Latas de atún": True,
-        "Garbanzos en bote": True,
-        "Pasta / Ñoquis": True
-    }
+    st.session_state.despensa_fondo = ["Cebollas", "Patatas", "Huevos", "Arroz", "Latas de atún", "Garbanzos en bote", "Pasta / Ñoquis"]
+
+if "despensa_basicos" not in st.session_state:
+    st.session_state.despensa_basicos = ["Aceite de oliva", "Sal", "Pimienta", "Vinagre", "Ajo", "Harina", "Pimentón", "Orégano"]
 
 # --- PESTAÑAS PRINCIPALES ---
 tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Planificar Semana", "🎨 Vista previa y Edición", "⭐ Recetario Favorito", "📦 Despensa y Básicos"])
@@ -62,7 +57,7 @@ with tab1:
 
     st.subheader("2. Reglas logísticas y nutricionales activas")
     st.markdown("""
-    * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas de calidad y técnicas de cocina ligeras (horno, plancha, vapor, guisos sin exceso de grasa).
+    * 🥗 **Enfoque Saludable:** Platos nutritivos, ricos en verduras, legumbres, proteínas magras y técnicas de cocina ligeras.
     * 💼 **Héctor:** Túper L-J en comida | Casa los Viernes | Cena en casa todos los días.
     * 👧👦 **Beñat y Araia:** Cenas adaptadas, atractivas y saludables de Lunes a Viernes.
     * 🐟 **Pescado:** Prohibido en túpers. **Mínimo 1 cena a la semana en casa debe ser de pescado o marisco**.
@@ -71,243 +66,11 @@ with tab1:
 
     if st.button("🚀 Generar Menú Inteligente y Saludable con IA", type="primary"):
         if not api_key:
-            st.error("Por favor, introduce una API Key válida en el menú lateral.")
+            st.error("Por favor, introduce una API Key válida en el menú lateral o en los Secrets de Streamlit.")
         else:
             with st.spinner("La IA está preparando vuestro menú semanal saludable..."):
                 try:
                     str_urgentes = ", ".join(st.session_state.despensa_urgentes) if st.session_state.despensa_urgentes else "Ninguno"
-                    str_fondo = ", ".join([k for k, v in st.session_state.despensa_fondo.items() if v])
-
-                    prompt = f"""
-                    Eres un chef nutricionista personal experto en dieta mediterránea saludable para una familia de 4 (Héctor, Ainhoa y los niños Beñat de 8 años y Araia de 3).
-                    Genera un menú de Lunes a Viernes (Comida y Cena) en formato JSON.
-
-                    LOGÍSTICA:
-                    - Turno Ainhoa: {turno_ainhoa}.
-                    - Héctor: Túper Comida L-J. Viernes come en casa. Cena en casa siempre.
-                    - Cenas: Niños Beñat (8) y Araia (3) cenan en casa. Cenas atractivas, saludables, ligeras y nutritivas.
-
-                    REGLAS DE ORO OBLIGATORIAS:
-                    1. ALIMENTACIÓN SALUDABLE: Todos los platos deben ser nutricionalmente equilibrados, basados en alimentos reales, abundantes verduras, legumbres y proteínas magras. Evitar Ultraprocesados o grasas excesivas.
-                    2. TÚPERS (L-J): Selecciona 3 recetas saludables de túper sin pescado. EXACTAMENTE 1 de las recetas se debe repetir en 2 días (ej. Lunes y Miércoles).
-                    3. NINGÚN TÚPER PUEDE CONTENER PESCADO O MARISCO.
-                    4. PESCADO EN CASA: MÍNIMO 1 DÍA DE LA SEMANA LA CENA EN CASA DEBE SER DE PESCADO O MARISCO (ej. Merluza, salmón, lubina, calamares al horno o plancha).
-                    5. Usar en los primeros días (Lunes/Martes) estos ingredientes urgentes si los hay: {str_urgentes}.
-                    6. Puedes usar estos ingredientes de fondo de despensa en cualquier momento: {str_fondo}.
-                    7. Incluye para CADA plato una descripción breve ("descripcion") de 1 frase aclaratoria o valor nutricional/paso a paso corto.
-
-                    RESPONDE ÚNICAMENTE CON UN JSON CON ESTA ESTRUCTURA EXACTA SIN MARKDOWN:
-                    {{
-                        "Lunes": {{
-                            "Comida_Plato": "...", "Comida_Desc": "...",
-                            "Cena_Plato": "...", "Cena_Desc": "..."
-                        }},
-                        "Martes": {{ ... }},
-                        "Miércoles": {{ ... }},
-                        "Jueves": {{ ... }},
-                        "Viernes": {{ ... }}
-                    }}
-                    """
-
-                    model = genai.GenerativeModel("gemini-3.8-flash")
-                    response = model.generate_content(prompt)
-                    text_response = response.text.replace("```json", "").replace("```", "").strip()
-                    menu_ia = json.loads(text_response)
-
-                    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-                    menu_final = {}
-
-                    for dia in dias:
-                        hector_c = "🍱 Túper Héctor" if dia != "Viernes" else "🍽️ Casa Héctor"
-                        hector_cen = "🍽️ Casa Héctor"
-                        ninos = "👧👦 Casa Beñat y Araia"
-                        
-                        if "Mañana" in turno_ainhoa:
-                            ainhoa_c = "🍱 Túper Ainhoa"
-                            ainhoa_cen = "🍽️ Casa Ainhoa"
-                        elif "Tarde" in turno_ainhoa:
-                            ainhoa_c = "🍽️ Casa Ainhoa"
-                            ainhoa_cen = "🍱 Túper Ainhoa"
-                        else:
-                            ainhoa_c = "🍽️ Casa Ainhoa"
-                            ainhoa_cen = "🍽️ Casa Ainhoa"
-
-                        menu_final[dia] = {
-                            "Comida_Plato": menu_ia[dia]["Comida_Plato"],
-                            "Comida_Desc": menu_ia[dia].get("Comida_Desc", ""),
-                            "Comida_Logistica": f"{hector_c}  |  {ainhoa_c}",
-                            "Cena_Plato": menu_ia[dia]["Cena_Plato"],
-                            "Cena_Desc": menu_ia[dia].get("Cena_Desc", ""),
-                            "Cena_Logistica": f"{hector_cen}  |  {ainhoa_cen}  |  {ninos}"
-                        }
-
-                    st.session_state.menu_actual = menu_final
-                    st.success("¡Menú saludable generado! Ve a la pestaña '🎨 Vista previa y Edición' para revisarlo.")
-
-                except Exception as e:
-                    st.error(f"Error al generar el menú: {e}")
-
-# --- TAB 2: VISTA PREVIA Y EDICIÓN ---
-with tab2:
-    st.header("🎨 Vista Previa y Ajustes del Menú")
-    if "menu_actual" in st.session_state:
-        dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-        
-        for dia in dias:
-            with st.container():
-                st.subheader(f"📅 {dia}")
-                col_comida, col_cena = st.columns(2)
-                
-                # --- COMIDA ---
-                with col_comida:
-                    st.caption(f"🌞 **COMIDA** — `{st.session_state.menu_actual[dia]['Comida_Logistica']}`")
-                    c_title, c_btn1, c_btn2 = st.columns([0.74, 0.13, 0.13])
-                    
-                    with c_title:
-                        st.markdown(f"### {st.session_state.menu_actual[dia]['Comida_Plato']}")
-                        if st.session_state.menu_actual[dia]['Comida_Desc']:
-                            st.caption(f"💡 *{st.session_state.menu_actual[dia]['Comida_Desc']}*")
-                    
-                    with c_btn1:
-                        if st.button("🔄", key=f"btn_c_{dia}", help="Cambiar solo este plato de comida"):
-                            if api_key:
-                                with st.spinner("Buscando alternativa saludable..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de comida para {dia} que respete no llevar pescado en túper. Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
-                                    model = genai.GenerativeModel("gemini-3.8-flash")
-                                    res = model.generate_content(prompt_alt)
-                                    alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
-                                    st.session_state.menu_actual[dia]['Comida_Plato'] = alt_json['plato']
-                                    st.session_state.menu_actual[dia]['Comida_Desc'] = alt_json['desc']
-                                    st.rerun()
-
-                    with c_btn2:
-                        if st.button("⭐", key=f"btn_fav_c_{dia}", help="Guardar en el Recetario Favorito"):
-                            nueva_receta = {
-                                "plato": st.session_state.menu_actual[dia]['Comida_Plato'],
-                                "desc": st.session_state.menu_actual[dia]['Comida_Desc']
-                            }
-                            if nueva_receta not in st.session_state.recetas_favoritas:
-                                st.session_state.recetas_favoritas.append(nueva_receta)
-                                st.toast("⭐ ¡Plato guardado en tu Recetario Favorito!", icon="✅")
-                            else:
-                                st.toast("ℹ️ Este plato ya está en tu recetario.")
-
-                # --- CENA ---
-                with col_cena:
-                    st.caption(f"🌙 **CENA** — `{st.session_state.menu_actual[dia]['Cena_Logistica']}`")
-                    f_title, f_btn1, f_btn2 = st.columns([0.74, 0.13, 0.13])
-                    
-                    with f_title:
-                        st.markdown(f"### {st.session_state.menu_actual[dia]['Cena_Plato']}")
-                        if st.session_state.menu_actual[dia]['Cena_Desc']:
-                            st.caption(f"💡 *{st.session_state.menu_actual[dia]['Cena_Desc']}*")
-                    
-                    with f_btn1:
-                        if st.button("🔄", key=f"btn_f_{dia}", help="Cambiar solo este plato de cena"):
-                            if api_key:
-                                with st.spinner("Buscando alternativa saludable..."):
-                                    prompt_alt = f"Sugiere 1 plato alternativo saludable de cena para {dia} amigable para niños (Beñat y Araia). Responde en JSON corto: {{\n\"plato\": \"...\", \"desc\": \"...\"\n}}"
-                                    model = genai.GenerativeModel("gemini-3.8-flash")
-                                    res = model.generate_content(prompt_alt)
-                                    alt_json = json.loads(res.text.replace("```json", "").replace("```", "").strip())
-                                    st.session_state.menu_actual[dia]['Cena_Plato'] = alt_json['plato']
-                                    st.session_state.menu_actual[dia]['Cena_Desc'] = alt_json['desc']
-                                    st.rerun()
-
-                    with c_btn2:
-                        if st.button("⭐", key=f"btn_fav_f_{dia}", help="Guardar en el Recetario Favorito"):
-                            nueva_receta = {
-                                "plato": st.session_state.menu_actual[dia]['Cena_Plato'],
-                                "desc": st.session_state.menu_actual[dia]['Cena_Desc']
-                            }
-                            if nueva_receta not in st.session_state.recetas_favoritas:
-                                st.session_state.recetas_favoritas.append(nueva_receta)
-                                st.toast("⭐ ¡Plato guardado en tu Recetario Favorito!", icon="✅")
-                            else:
-                                st.toast("ℹ️ Este plato ya está en tu recetario.")
-
-                st.divider()
-
-        # Botones de exportación
-        col_exp1, col_exp2 = st.columns(2)
-        with col_exp1:
-            if st.button("📄 Exportar PDF para la Nevera", type="secondary"):
-                st.info("Generando vista preparada para guardar/imprimir en PDF...")
-        with col_exp2:
-            if st.button("📝 Enviar Lista de la Compra a Google Keep", type="secondary"):
-                st.success("¡Lista de ingredientes filtrada enviada correctamente!")
-    else:
-        st.info("Primero genera un menú en la pestaña '🗓️ Planificar Semana'.")
-
-# --- TAB 3: RECETARIO FAVORITO ---
-with tab3:
-    st.header("⭐ Vuestro Recetario Familiar de Éxitos")
-    st.write("Platos que habéis guardado marcando la estrella durante las planificaciones semanales:")
-    
-    if st.session_state.recetas_favoritas:
-        for idx, rec in enumerate(st.session_state.recetas_favoritas):
-            col_rec, col_del = st.columns([0.9, 0.1])
-            with col_rec:
-                st.markdown(f"### {idx+1}. {rec['plato']}")
-                if rec['desc']:
-                    st.caption(f"💡 {rec['desc']}")
-            with col_del:
-                if st.button("🗑️", key=f"del_fav_{idx}", help="Eliminar plato"):
-                    st.session_state.recetas_favoritas.pop(idx)
-                    st.rerun()
-            st.divider()
-    else:
-        st.info("Aún no habéis guardado recetas favoritas. ¡Pulsa la estrella ⭐ en cualquier plato del menú para añadirlo!")
-
-# --- TAB 4: DESPENSA Y STOCK ---
-with tab4:
-    st.header("📦 Gestor Visual de Despensa y Stock")
-    
-    col_u, col_f = st.columns(2)
-    
-    # BLOQUE 1: URGENCIAS
-    with col_u:
-        st.subheader("⚠️ 1. Consumo URGENTE (Lunes / Martes)")
-        st.caption("Añade uno a uno los productos perecederos que caducan pronto:")
-        
-        with st.form("form_urgentes", clear_on_submit=True):
-            nuevo_urg = st.text_input("Añadir producto urgente:", placeholder="Ej: Pescado fresco, medio calabacín...")
-            if st.form_submit_button("➕ Añadir a Urgentes"):
-                if nuevo_urg and nuevo_urg.strip() not in st.session_state.despensa_urgentes:
-                    st.session_state.despensa_urgentes.append(nuevo_urg.strip())
-                    st.rerun()
-
-        if st.session_state.despensa_urgentes:
-            st.write("**Lista de urgentes para esta semana:**")
-            for idx, item in enumerate(st.session_state.despensa_urgentes):
-                c_item, c_btn = st.columns([0.85, 0.15])
-                c_item.warning(f"🔴 {item}")
-                if c_btn.button("❌", key=f"del_urg_{idx}"):
-                    st.session_state.despensa_urgentes.pop(idx)
-                    st.rerun()
-        else:
-            st.info("No hay productos urgentes marcados.")
-
-    # BLOQUE 2: FONDO DE DESPENSA
-    with col_f:
-        st.subheader("🧅 2. Fondo de Despensa (Uso Libre)")
-        st.caption("Marca lo que TIENES en stock para que la IA no lo pida en la compra:")
-        
-        for item in list(st.session_state.despensa_fondo.keys()):
-            st.session_state.despensa_fondo[item] = st.checkbox(
-                f"📦 {item}",
-                value=st.session_state.despensa_fondo[item],
-                key=f"chk_{item}"
-            )
-
-    st.divider()
-    
-    # BLOQUE 3: BÁSICOS
-    st.subheader("🧂 3. Básicos Permanentes (Filtro automático de compra)")
-    st.caption("Estos condimentos e ingredientes se asumen siempre en casa y jamás se meterán a la lista de la compra:")
-    
-    basicos_lista = ["Aceite de oliva", "Sal", "Pimienta", "Vinagre", "Ajo", "Harina", "Pimentón", "Orégano"]
-    cols_b = st.columns(4)
-    for idx, b in enumerate(basicos_lista):
-        cols_b[idx % 4].success(f"✅ {b}")
+                    str_fondo = ", ".join(st.session_state.despensa_fondo)
+                    str_basicos = ", ".join(st.session_state.despensa_basicos)
                     
